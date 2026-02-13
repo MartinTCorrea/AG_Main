@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AYLEN WEJEJEJE</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@1,500;1,600&family=Nunito:wght@400;700;800&family=Indie+Flower&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+    <style>
+        body { 
+            margin: 0; overflow: hidden; 
+            background-color: #b46b7a; 
+            font-family: 'Nunito', sans-serif;
+            user-select: none; -webkit-user-select: none;
+            touch-action: none; color: #4a4a4a;
+        }
+
+        h1, h2, h3 { font-family: 'Lora', serif; font-style: italic; }
+        
+        #demoCanvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.5; pointer-events: none;}
+
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #28141e; 
+            z-index: 2000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: #fffdf0; transition: opacity 0.5s;
+        }
+        
+        #start-btn, .action-btn {
+            padding: 12px 35px; font-size: 18px; font-family: 'Nunito', sans-serif; font-weight: 700;
+            background: #d85a7f; color: white; border: 2px solid #fffdf0; border-radius: 50px; 
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.1s;
+        }
+        #start-btn:active, .action-btn:active { transform: scale(0.95); }
+
+        .paper-container {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%; max-width: 600px; height: 80vh; 
+            background: #fffdf0; border: 1px solid #e6e0d0; border-radius: 8px;
+            box-shadow: 1px 1px 4px rgba(0,0,0,0.1), 10px 10px 30px rgba(60, 30, 40, 0.3);
+            display: none; 
+            flex-direction: column; align-items: center;
+            padding: 20px; box-sizing: border-box; transition: all 0.5s;
+        }
+
+        #game-view { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        
+        #table-top {
+            flex-grow: 1; width: 100%; margin: 10px 0;
+            background: #f8f6ee; border-radius: 6px; border: 2px dashed #dabac2;
+            position: relative; overflow: hidden; 
+        }
+
+        .slot {
+            position: absolute; display: flex; justify-content: center; align-items: center;
+            font-size: 40px; filter: brightness(0.95) grayscale(1) opacity(0.3); pointer-events: none; z-index: 1;
+        }
+        .item {
+            position: absolute; display: flex; justify-content: center; align-items: center;
+            font-size: 44px; cursor: grab; z-index: 100; filter: drop-shadow(2px 3px 3px rgba(0,0,0,0.2));
+        }
+        .item.placed { cursor: default; z-index: 2; filter: none; pointer-events: none; transition: all 0.3s; }
+
+        #list-view { 
+            display: none; width: 100%; height: 100%; flex-direction: column; 
+        }
+        
+        .list-header {
+            text-align: center; margin-bottom: 10px; border-bottom: 2px dashed #dabac2; padding-bottom: 10px;
+        }
+        
+        .progress-bar { font-size: 14px; color: #d85a7f; font-weight: bold; }
+
+        .notes-grid {
+            flex-grow: 1; overflow-y: auto; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            grid-auto-rows: 60px; 
+            gap: 12px; padding: 10px;
+            
+            scrollbar-width: thin; scrollbar-color: #d85a7f #f8f6ee;
+        }
+        .notes-grid::-webkit-scrollbar { width: 8px; }
+        .notes-grid::-webkit-scrollbar-thumb { background-color: #d85a7f; border-radius: 10px; }
+
+        .note-card {
+            width: 100%; height: 100%; 
+            background: #e8aeb9; 
+            border-radius: 8px; cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 18px; color: white; font-weight: 800; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.2s, background 0.3s;
+            position: relative; overflow: hidden;
+            border: 2px solid transparent; 
+        }
+        .note-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+        
+        /* Estilo especial para la última carta */
+        .note-card.special-card {
+            background: #d85a7f; 
+            border: 2px dashed #fff;
+        }
+
+        .note-card.revealed {
+            background: #fff; border: 2px solid #e8aeb9; color: #4a4a4a;
+        }
+        .note-card.revealed span { display: none; } 
+        .note-card.revealed::after {
+            content: "❤️"; font-size: 20px;
+        }
+
+        #note-popup {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 3000;
+            display: none; justify-content: center; align-items: center;
+            backdrop-filter: blur(3px);
+        }
+        #note-paper {
+            width: 80%; max-width: 400px; padding: 40px;
+            background: #fffdf0; box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            font-family: 'Indie Flower', cursive; 
+            font-size: 24px; line-height: 1.5; color: #5c4b51;
+            transform: rotate(-1deg);
+            position: relative;
+        }
+        #note-paper::before { 
+            content: ''; position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
+            width: 100px; height: 30px; background: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #close-popup {
+            margin-top: 20px; font-family: 'Nunito', sans-serif; font-size: 14px;
+            background: none; border: none; color: #d85a7f; cursor: pointer; text-decoration: underline;
+        }
+
+        .watermark { position: fixed; bottom: 10px; right: 15px; opacity: 0.6; font-size: 12px; pointer-events: none; color: #fffdf0;}
+    </style>
+</head>
+<body onload="initBackground()">
+
+    <canvas id="demoCanvas"></canvas>
+    
+    <div class="watermark">de Martín</div>
+
+    <div id="start-overlay">
+        <h1 style="font-size: 2.5em; margin-bottom: 10px;">OLA</h1>
+        <p style="color:#f0d4dc; margin-bottom: 30px; text-align: center;">Dije que iba a hacer un pdf pero se me hizo muy fome así que hice esto<br>(Por lo general lo avanzaba una vez te dormías).</p><br>PD: lo acabo de terminar el 13 de feb a las 7 de la mañana asjdkajwsdjkasjda</p>
+        <button id="start-btn" onclick="startGame()">Comenzar</button>
+    </div>
+
+    <audio id="musica" loop> <source src="musica.mp3" type="audio/mpeg"> </audio>
+    <audio id="snap-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3"></audio>
+    <audio id="win-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+    <audio id="paper-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-paper-slide-1530.mp3"></audio>
+
+    <div class="paper-container" id="main-container">
+        
+        <div id="game-view">
+            <h2 style="color: #c24d68; margin: 0 0 10px 0; text-align: center;">Para descubrir el resto tienes que completar esto WEJEJEJEJE</h2>
+            
+            <div style="display: flex; justify-content: space-between; color: #d85a7f; font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+                <span><i class="fas fa-stopwatch"></i> <span id="timer">0</span>s</span>
+                <span><span id="progress">0</span>/<span id="total">0</span></span>
+            </div>
+            
+            <div id="table-top"></div>
+        </div>
+
+        <div id="list-view">
+            <div class="list-header">
+                <h2 id="dynamic-title" style="color: #c24d68; margin: 0;">Cosas que me gustan de ti</h2>
+                <br>
+                <p style="color: #c24d68; margin: 0;">Aquí puedes abrir la que tú quieras o puedes abrir una al azar</p>
+                <p style="color: #c24d68; margin: 0;">Todo se guarda así que puedes cerrar esto por completo sin problema</p>
+                
+                <div class="progress-bar">Descubiertas: <span id="revealed-count">0</span>/<span id="total-count">0</span></div>
+                
+                <button class="action-btn" onclick="revealRandom()" style="margin-top: 10px; font-size: 14px; padding: 8px 20px;">
+                    <i class="fas fa-random"></i> Abrir una al azar
+                </button>
+            </div>
+            
+            <div class="notes-grid" id="notes-grid"></div>
+        </div>
+
+    </div>
+
+    <div id="note-popup" onclick="closeNote()">
+        <div id="note-paper" onclick="event.stopPropagation()">
+            <div id="note-content">...</div>
+            <div style="text-align: center;">
+                <button id="close-popup" onclick="closeNote()">Guardar nota</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        const LOVE_LIST = [
+            "Verte sonreír.",
+            "El cómo te ríes.",
+            "El cómo te emocionas por lo que te gusta.",
+            "Tu versión burlesca.",
+            "Tu nariz.",
+            "Tus cejas.",
+            "Tus ojos, que son los más hermosos que existen.",
+            "El cómo eres cuando te resientes, me dan ganas de rogarte.",
+            "El cómo te emocionas cuando me muestras algo que te hace ilusión.",
+            "El cómo, cuando te cuento un chiste malo, dices \"Qué estúpido\" pero te ríes igual.",
+            "El cómo, cuando te digo algo que sí quieres, dices el SÍ más absoluto y rápido que existe.",
+            "El cómo eres cuando me muestras algo en lo que eres buena.",
+            "El cómo cambias a otra personalidad cuando tienes sueño.",
+            "Tu pelo.",
+            "El cómo te ries de cosas como el NUEVE o AWELITA",
+            "El cómo, cuando estás dormida y literalmente ya no estás con vida, me contestas igual con \"UM UM\".",
+            "El cómo a veces me dices que elija yo, en realidad sí que tienes una opción elegida.",
+            "El cómo suena mi nombre con tu voz.",
+            "El cómo, cuando estás por morir en el valo o en alguna situación similar, escucho que dices \"MARTÍN\".",
+            "El cómo has mejorado jugando valo desde que nos conocemos.",
+            "El cómo cuando te duermes empiezas a hablar sola y entiendo un 10%.",
+            "Cuando te pregunto si te estás quedando dormida y sé que sí porque me contestas con un ruido.",
+            "El cómo te ríes con el \"JIJIJIJI\".",
+            "Lo emocional que eres.",
+            "Lo auténtica que eres.",
+            "El cómo cuando me río, me preguntas por qué me río de todo, cuando la razón eres tú.",
+            "El cómo me preguntas \"QUÉ\" cuando me quedo mirándote.",
+            "El cómo te da risa que te dé gomitas a escondidas.",
+            "Tus outfits.",
+            "El cómo cuando te digo preciosa o princesa haces hmmmmm",
+            "Lo increíble que eres.",
+            "Lo increíblemente hermosa, preciosa, bella, linda, bonita, luminosa y espléndida que eres.",
+            "La persona que me dan ganas de ser cuando estoy contigo.",
+            "Y en realidad podría seguir y seguir, porque me gustas por completo, lo que ya conozco y lo nuevo que veo, todo de ti me gusta. Así que esta lista que dice un número en realidad es infinita. Te quiero preciosa <3."
+        ];
+
+        const ITEMS_DATA = [
+            '🥭', '❤️', '🌹', '💌', '🐱', '🧸', '🍓', '🌙', 
+            '☕', '✨', '🧁', '🧩', '🎶', '🌻', '📷'
+        ];
+
+        let placedCount = 0;
+        const totalItems = ITEMS_DATA.length;
+        let timerInterval;
+        let time = 0;
+        const gameArea = document.getElementById('table-top');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const count = LOVE_LIST.length;
+            document.getElementById('total-count').innerText = count;
+            document.getElementById('dynamic-title').innerText = `${count} Cosas que me gustan de ti`;
+        });
+
+        function startGame() {
+            document.getElementById('musica').play().catch(e => console.log("Audio bloq."));
+            
+            const mainContainer = document.getElementById('main-container');
+            mainContainer.style.display = 'flex';
+            
+            const overlay = document.getElementById('start-overlay');
+            overlay.style.opacity = 0;
+            
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                spawnChaos();
+                startTimer();
+            }, 500);
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => { time++; document.getElementById('timer').innerText = time; }, 1000);
+        }
+
+        function spawnChaos() {
+            document.getElementById('total').innerText = totalItems;
+            const w = gameArea.clientWidth; const h = gameArea.clientHeight;
+            const padding = 40; 
+            let occupied = [];
+
+            function getSafePos(minDist = 60) {
+                let x, y, safe, attempts = 0;
+                do {
+                    safe = true;
+                    x = Math.random() * (w - padding * 2) + padding;
+                    y = Math.random() * (h - padding * 2) + padding;
+                    for (let p of occupied) if (Math.hypot(x-p.x, y-p.y) < minDist) { safe = false; break; }
+                    attempts++;
+                    if (attempts > 50) minDist *= 0.8; 
+                } while (!safe && attempts < 100);
+                return { x, y };
+            }
+
+            ITEMS_DATA.forEach((emoji, i) => {
+                const rot = Math.floor(Math.random() * 360);
+                
+                let sPos = getSafePos(60); occupied.push(sPos);
+                let slot = document.createElement('div');
+                slot.className = 'slot'; slot.innerText = emoji; slot.dataset.id = i;
+                slot.style.left = (sPos.x-25)+'px'; slot.style.top = (sPos.y-25)+'px';
+                slot.style.transform = `rotate(${rot}deg)`;
+                gameArea.appendChild(slot);
+
+                let iPos = getSafePos(60);
+                let safety = 0;
+                while (Math.hypot(iPos.x-sPos.x, iPos.y-sPos.y) < 80 && safety++ < 10) iPos = getSafePos(60);
+                occupied.push(iPos);
+
+                let item = document.createElement('div');
+                item.className = 'item'; item.innerText = emoji; item.dataset.targetId = i;
+                item.style.left = (iPos.x-25)+'px'; item.style.top = (iPos.y-25)+'px';
+                item.style.transform = `rotate(${rot}deg)`;
+                
+                addDrag(item);
+                gameArea.appendChild(item);
+            });
+        }
+
+        let dragItem = null, startX, startY;
+        function addDrag(el) { el.addEventListener('mousedown', startD); el.addEventListener('touchstart', startD, {passive:false}); }
+        
+        function startD(e) {
+            if (e.target.classList.contains('placed')) return;
+            e.preventDefault(); dragItem = e.target;
+            let c = e.touches ? e.touches[0] : e;
+            let r = dragItem.getBoundingClientRect();
+            startX = c.clientX - r.left; startY = c.clientY - r.top;
+            document.addEventListener('mousemove', moveD); document.addEventListener('touchmove', moveD, {passive:false});
+            document.addEventListener('mouseup', endD); document.addEventListener('touchend', endD);
+        }
+
+        function moveD(e) {
+            if (!dragItem) return; e.preventDefault();
+            let c = e.touches ? e.touches[0] : e;
+            let pR = gameArea.getBoundingClientRect();
+            let x = c.clientX - pR.left - startX; let y = c.clientY - pR.top - startY;
+            x = Math.max(-20, Math.min(x, pR.width-30)); y = Math.max(-20, Math.min(y, pR.height-30));
+            dragItem.style.left = x+'px'; dragItem.style.top = y+'px';
+        }
+
+        function endD() {
+            if (!dragItem) return;
+            let tId = dragItem.dataset.targetId;
+            let slot = gameArea.querySelector(`.slot[data-id="${tId}"]`);
+            let iR = dragItem.getBoundingClientRect(); let sR = slot.getBoundingClientRect();
+            
+            if (Math.hypot((iR.left+iR.width/2)-(sR.left+sR.width/2), (iR.top+iR.height/2)-(sR.top+sR.height/2)) < 40) {
+                dragItem.style.left = slot.style.left; dragItem.style.top = slot.style.top;
+                dragItem.classList.add('placed');
+                try{document.getElementById('snap-sound').play()}catch(e){}
+                
+                dragItem.animate([{transform:`${slot.style.transform} scale(1.3)`},{transform: slot.style.transform}],{duration:200});
+                
+                placedCount++;
+                document.getElementById('progress').innerText = placedCount;
+
+                if (placedCount === totalItems) {
+                    clearInterval(timerInterval);
+                    setTimeout(victorySequence, 500);
+                }
+            }
+            dragItem = null;
+            document.removeEventListener('mousemove', moveD); document.removeEventListener('touchmove', moveD);
+            document.removeEventListener('mouseup', endD); document.removeEventListener('touchend', endD);
+        }
+
+        function victorySequence() {
+            try{document.getElementById('win-sound').play()}catch(e){}
+            confetti({particleCount: 100, spread: 70, origin: { y: 0.6 }});
+            
+            setTimeout(() => {
+                const gameView = document.getElementById('game-view');
+                const listView = document.getElementById('list-view');
+                
+                gameView.style.opacity = 0;
+                setTimeout(() => {
+                    gameView.style.display = 'none';
+                    listView.style.display = 'flex';
+                    initList(); 
+                    
+                    listView.style.opacity = 0;
+                    listView.animate([{opacity:0}, {opacity:1}], {duration: 500, fill:'forwards'});
+                }, 500);
+            }, 2000);
+        }
+
+        let revealedIndices = JSON.parse(localStorage.getItem('loveListRevealed')) || [];
+
+        function initList() {
+            const grid = document.getElementById('notes-grid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < LOVE_LIST.length; i++) {
+                const card = document.createElement('div');
+                card.className = 'note-card';
+                card.id = `card-${i}`;
+                
+                if (i === LOVE_LIST.length - 1) {
+                    card.classList.add('special-card');
+                }
+                
+                if (revealedIndices.includes(i)) {
+                    card.classList.add('revealed');
+                } else {
+                    card.innerHTML = `<span>${i + 1}</span>`;
+                }
+
+                card.onclick = () => openNote(i);
+                grid.appendChild(card);
+            }
+            updateCounter();
+        }
+
+        function openNote(index) {
+            const lastIndex = LOVE_LIST.length - 1;
+            
+            if (index === lastIndex) {
+                if (!revealedIndices.includes(index) && revealedIndices.length < lastIndex) {
+                    showCustomMessage("Nao nao el ultimo tiene que abrirse al final");
+                    return;
+                }
+            }
+
+            if (!revealedIndices.includes(index)) {
+                revealedIndices.push(index);
+                localStorage.setItem('loveListRevealed', JSON.stringify(revealedIndices));
+                
+                const card = document.getElementById(`card-${index}`);
+                card.animate([{transform: 'rotateY(0deg)'}, {transform: 'rotateY(90deg)'}], {duration:150}).onfinish = () => {
+                    card.classList.add('revealed');
+                    card.innerHTML = '';
+                    card.animate([{transform: 'rotateY(90deg)'}, {transform: 'rotateY(0deg)'}], {duration:150});
+                };
+                updateCounter();
+            }
+
+            showPopup(index);
+        }
+
+        // Nueva función auxiliar para mensajes personalizados (advertencias)
+        function showCustomMessage(message) {
+            document.getElementById('note-content').innerText = message;
+            const popup = document.getElementById('note-popup');
+            popup.style.display = 'flex';
+            popup.animate([{opacity:0}, {opacity:1}], {duration: 200});
+            try{document.getElementById('paper-sound').play()}catch(e){}
+        }
+
+        function showPopup(index) {
+            const text = LOVE_LIST[index] || "Te quiero ❤️"; 
+            document.getElementById('note-content').innerText = text;
+            
+            const popup = document.getElementById('note-popup');
+            popup.style.display = 'flex';
+            popup.animate([{opacity:0}, {opacity:1}], {duration: 200});
+            try{document.getElementById('paper-sound').play()}catch(e){}
+        }
+
+        function closeNote() {
+            document.getElementById('note-popup').style.display = 'none';
+        }
+
+        function revealRandom() {
+            let available = [];
+            const lastIndex = LOVE_LIST.length - 1;
+
+            for(let i=0; i < LOVE_LIST.length; i++) {
+                if(!revealedIndices.includes(i)) available.push(i);
+            }
+
+            if (available.length === 0) {
+                const randomAny = Math.floor(Math.random() * LOVE_LIST.length);
+                showPopup(randomAny);
+                return;
+            }
+
+            if (available.length === 1 && available[0] === lastIndex) {
+                showCustomMessage("El último lo tienes que abrir tu");
+                return;
+            }
+
+            const pool = available.filter(i => i !== lastIndex);
+            if (pool.length === 0) return;
+
+            const randomIdx = pool[Math.floor(Math.random() * pool.length)];
+            const card = document.getElementById(`card-${randomIdx}`);
+            card.scrollIntoView({behavior: "smooth", block: "center"});
+            
+            setTimeout(() => openNote(randomIdx), 500);
+        }
+
+        function updateCounter() {
+            document.getElementById('revealed-count').innerText = revealedIndices.length;
+        }
+
+        var stage, particles = [], w, h;
+        function initBackground() {
+            var canvas = document.getElementById("demoCanvas");
+            w = window.innerWidth; h = window.innerHeight;
+            canvas.width = w; canvas.height = h;
+            stage = new createjs.Stage("demoCanvas");
+
+            for (var i = 0; i < 40; i++) { 
+                var p = new createjs.Text(Math.random()>0.5?"❤️":"🥭", "24px Arial");
+                p.textAlign = "center"; p.alpha = Math.random() * 0.2 + 0.1; 
+                p.x = Math.random() * w; p.y = Math.random() * h; 
+                p.speedY = Math.random() + 0.5; p.amp = Math.random() * 15; p.freq = Math.random() * 0.02; p.phase = Math.random()*10;
+                p.startX = p.x; 
+                stage.addChild(p); particles.push(p);
+            }
+            createjs.Ticker.framerate = 60; createjs.Ticker.timingMode = createjs.Ticker.RAF;
+            createjs.Ticker.addEventListener("tick", (e) => {
+                for(let p of particles) {
+                    p.y -= p.speedY; p.x = p.startX + Math.sin(p.y * p.freq + p.phase) * p.amp; p.rotation += p.speedY;
+                    if (p.y < -30) { p.y = h+30; p.startX = Math.random()*w; }
+                }
+                stage.update(e);
+            });
+            window.addEventListener('resize', () => { w=window.innerWidth; h=window.innerHeight; stage.canvas.width=w; stage.canvas.height=h; });
+        }
+    </script>
+</body>
+</html>
