@@ -100,7 +100,6 @@
         }
         .note-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
         
-        /* Estilo especial para la última carta */
         .note-card.special-card {
             background: #d85a7f; 
             border: 2px dashed #fff;
@@ -441,8 +440,6 @@
 
             showPopup(index);
         }
-
-        // Nueva función auxiliar para mensajes personalizados (advertencias)
         function showCustomMessage(message) {
             document.getElementById('note-content').innerText = message;
             const popup = document.getElementById('note-popup');
